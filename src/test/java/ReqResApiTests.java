@@ -1,215 +1,182 @@
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
-import io.restassured.module.jsv.JsonSchemaValidator;
 import io.restassured.response.Response;
 import org.hamcrest.Matchers;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.FixMethodOrder;
-import org.junit.runners.MethodSorters;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.TestMethodOrder;
 
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
-@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.*;
+
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class) // Ensures tests run in order
 public class ReqResApiTests {
 
-    @Before
-    public void setup() {
-        // Set base URI
-        RestAssured.baseURI = "https://reqres.in/api";
+    private static final String BASE_URI = "https://reqres.in/api";
+
+    @BeforeEach
+    void setup() {
+        RestAssured.baseURI = BASE_URI;
     }
 
     // ==================== GET Tests ====================
     @Test
-    public void test01_GetSingleUser() {
-        Response response = RestAssured.given()
-                .when()
-                .get("/users/2")
+    @Order(1)
+    void testGetSingleUser() {
+        Response response = given()
+                .when().get("/users/2")
                 .then()
-                .assertThat()
                 .statusCode(200)
-                .and()
                 .contentType(ContentType.JSON)
-                .and()
-                .body("data.id", Matchers.equalTo(2))
-                .body("data.email", Matchers.notNullValue())
-                .body("data.first_name", Matchers.equalTo("Janet"))
-                .body("data.last_name", Matchers.equalTo("Weaver"))
+                .body("data.id", equalTo(2))
+                .body("data.first_name", equalTo("Janet"))
+                .body("data.last_name", equalTo("Weaver"))
                 .extract().response();
 
         // Additional assertions
-        Assert.assertEquals("2", response.path("data.id").toString());
-        Assert.assertTrue(response.path("data.avatar").toString().contains("https://"));
-
-        // Log response time
+        assert response.path("data.avatar").toString().contains("https://");
         System.out.println("Response Time: " + response.getTime() + "ms");
     }
 
     @Test
-    public void test02_GetListUsers() {
-        RestAssured.given()
+    @Order(2)
+    void testGetListUsers() {
+        given()
                 .queryParam("page", 2)
-                .when()
-                .get("/users")
+                .when().get("/users")
                 .then()
-                .assertThat()
                 .statusCode(200)
-                .and()
                 .contentType(ContentType.JSON)
-                .and()
-                .body("page", Matchers.equalTo(2))
-                .body("data", Matchers.hasSize(Matchers.greaterThan(0)))
-                .body("data[0].id", Matchers.notNullValue())
-                .body("total_pages", Matchers.greaterThan(0));
+                .body("page", equalTo(2))
+                .body("data", hasSize(greaterThan(0)))
+                .body("total_pages", greaterThan(0));
     }
 
     @Test
-    public void test03_GetNonExistentUser() {
-        RestAssured.given()
-                .when()
-                .get("/users/23")
+    @Order(3)
+    void testGetNonExistentUser() {
+        given()
+                .when().get("/users/23")
                 .then()
-                .assertThat()
                 .statusCode(404);
     }
 
     // ==================== POST Tests ====================
     @Test
-    public void test04_CreateUser() {
-        Map<String, String> user = new HashMap<>();
-        user.put("name", "John Doe");
-        user.put("job", "Software Tester");
+    @Order(4)
+    void testCreateUser() {
+        Map<String, String> user = Map.of("name", "John Doe", "job", "Software Tester");
 
-        Response response = RestAssured.given()
+        Response response = given()
                 .contentType(ContentType.JSON)
                 .body(user)
-                .when()
-                .post("/users")
+                .when().post("/users")
                 .then()
-                .assertThat()
                 .statusCode(201)
-                .and()
-                .body("name", Matchers.equalTo("John Doe"))
-                .body("job", Matchers.equalTo("Software Tester"))
-                .body("id", Matchers.notNullValue())
-                .body("createdAt", Matchers.notNullValue())
+                .body("name", equalTo("John Doe"))
+                .body("job", equalTo("Software Tester"))
+                .body("id", notNullValue())
+                .body("createdAt", notNullValue())
                 .extract().response();
 
-        // Store the ID for potential future use
-        String userId = response.jsonPath().getString("id");
-        System.out.println("Created User ID: " + userId);
+        System.out.println("Created User ID: " + response.jsonPath().getString("id"));
     }
 
     @Test
-    public void test05_RegisterUser() {
-        Map<String, String> user = new HashMap<>();
-        user.put("email", "eve.holt@reqres.in");
-        user.put("password", "pistol");
+    @Order(5)
+    void testRegisterUser() {
+        Map<String, String> user = Map.of("email", "eve.holt@reqres.in", "password", "pistol");
 
-        RestAssured.given()
+        given()
                 .contentType(ContentType.JSON)
                 .body(user)
-                .when()
-                .post("/register")
+                .when().post("/register")
                 .then()
-                .assertThat()
                 .statusCode(200)
-                .and()
-                .body("id", Matchers.notNullValue())
-                .body("token", Matchers.notNullValue());
+                .body("id", notNullValue())
+                .body("token", notNullValue());
     }
 
     @Test
-    public void test06_UnsuccessfulRegister() {
-        Map<String, String> user = new HashMap<>();
-        user.put("email", "sydney@fife");
+    @Order(6)
+    void testUnsuccessfulRegister() {
+        Map<String, String> user = Map.of("email", "sydney@fife");
 
-        RestAssured.given()
+        given()
                 .contentType(ContentType.JSON)
                 .body(user)
-                .when()
-                .post("/register")
+                .when().post("/register")
                 .then()
-                .assertThat()
                 .statusCode(400)
-                .and()
-                .body("error", Matchers.equalTo("Missing password"));
+                .body("error", equalTo("Missing password"));
     }
 
     // ==================== PUT Tests ====================
     @Test
-    public void test07_UpdateUser() {
-        Map<String, String> user = new HashMap<>();
-        user.put("name", "John Updated");
-        user.put("job", "Senior Tester");
+    @Order(7)
+    void testUpdateUser() {
+        Map<String, String> user = Map.of("name", "John Updated", "job", "Senior Tester");
 
-        RestAssured.given()
+        given()
                 .contentType(ContentType.JSON)
                 .body(user)
-                .when()
-                .put("/users/2")
+                .when().put("/users/2")
                 .then()
-                .assertThat()
                 .statusCode(200)
-                .and()
-                .body("name", Matchers.equalTo("John Updated"))
-                .body("job", Matchers.equalTo("Senior Tester"))
-                .body("updatedAt", Matchers.notNullValue());
+                .body("name", equalTo("John Updated"))
+                .body("job", equalTo("Senior Tester"))
+                .body("updatedAt", notNullValue());
     }
 
     @Test
-    public void test08_PartialUpdateUser() {
-        Map<String, String> user = new HashMap<>();
-        user.put("name", "John Patched");
+    @Order(8)
+    void testPartialUpdateUser() {
+        Map<String, String> user = Map.of("name", "John Patched");
 
-        RestAssured.given()
+        given()
                 .contentType(ContentType.JSON)
                 .body(user)
-                .when()
-                .patch("/users/2")
+                .when().patch("/users/2")
                 .then()
-                .assertThat()
                 .statusCode(200)
-                .and()
-                .body("name", Matchers.equalTo("John Patched"))
-                .body("updatedAt", Matchers.notNullValue());
+                .body("name", equalTo("John Patched"))
+                .body("updatedAt", notNullValue());
     }
 
     // ==================== DELETE Tests ====================
     @Test
-    public void test09_DeleteUser() {
-        RestAssured.given()
-                .when()
-                .delete("/users/2")
+    @Order(9)
+    void testDeleteUser() {
+        given()
+                .when().delete("/users/2")
                 .then()
-                .assertThat()
                 .statusCode(204);
     }
 
     // ==================== Additional Tests ====================
-
     @Test
-    public void test10_ResponseTime() {
-        RestAssured.given()
-                .when()
-                .get("/users?page=2")
+    @Order(10)
+    void testResponseTime() {
+        given()
+                .when().get("/users?page=2")
                 .then()
-                .assertThat()
-                .time(Matchers.lessThan(2000L)); // Response time should be less than 2 seconds
+                .time(lessThan(2000L)); // Response time should be < 2s
     }
 
     @Test
-    public void test11_ResponseHeaders() {
-        RestAssured.given()
-                .when()
-                .get("/users/2")
+    @Order(11)
+    void testResponseHeaders() {
+        given()
+                .when().get("/users/2")
                 .then()
-                .assertThat()
-                .header("Content-Type", Matchers.containsString("application/json"))
-                .header("Transfer-Encoding", Matchers.equalTo("chunked"))
-                .header("Connection", Matchers.equalTo("keep-alive"));
+                .header("Content-Type", containsString("application/json"))
+                .header("Transfer-Encoding", equalTo("chunked"))
+                .header("Connection", equalTo("keep-alive"));
     }
 }

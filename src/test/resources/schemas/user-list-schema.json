@@ -33,7 +33,7 @@
           },
           "last_name": {
             "type": "string"
-          },+
+          },
           "avatar": {
             "type": "string",
             "format": "uri"
